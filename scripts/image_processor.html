@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Computer Pulse - Advanced Image Processing Engine</title>
+
+    <style>
+        body {
+            font-family: "Segoe UI", Tahoma, sans-serif;
+            margin: 20px;
+            background: #f4f6f9;
+            color: #333;
+        }
+
+        h2 {
+            color: #0056b3;
+            border-bottom: 2px solid #0056b3;
+            padding-bottom: 8px;
+        }
+
+        .container {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            flex: 1;
+            min-width: 320px;
+        }
+
+        canvas {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #ccc;
+            margin-top: 10px;
+            background: #eee;
+        }
+
+        .btn {
+            background: #0056b3;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 4px 2px;
+        }
+
+        .btn:hover {
+            background: #003d80;
+        }
+
+        textarea {
+            width: 100%;
+            height: 180px;
+            font-family: monospace;
+            font-size: 11px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h2>Computer Pulse — Image Processing & Asset Auditor</h2>
+
+    <div class="container">
+
+        <div class="card">
+            <h3>1. Upload Media Asset</h3>
+
+            <input type="file" id="imageInput" accept="image/*">
+
+            <br><br>
+
+            <canvas id="mainCanvas"></canvas>
+        </div>
+
+        <div class="card">
+
+            <h3>2. Algorithmic Transformations</h3>
+
+            <button class="btn" onclick="applyFilter('reset')">
+                Reset
+            </button>
+
+            <button class="btn" onclick="applyFilter('grayscale')">
+                Grayscale (Luminance)
+            </button>
+
+            <button class="btn" onclick="applyFilter('invert')">
+                Invert
+            </button>
+
+            <button class="btn" onclick="applyFilter('brighten')">
+                Brighten (+30)
+            </button>
+
+            <button class="btn" onclick="applyFilter('threshold')">
+                Binary Threshold
+            </button>
+
+            <h3>3. Media Asset Audit Log</h3>
+
+            <p>
+                Copy and paste this log block into
+                <code>data/image_assets.log</code>
+            </p>
+
+            <textarea id="logOutput" readonly></textarea>
+
+        </div>
+
+    </div>
+
+    <script>
+
+        const imageInput = document.getElementById("imageInput");
+        const canvas = document.getElementById("mainCanvas");
+        const ctx = canvas.getContext("2d");
+        const logOutput = document.getElementById("logOutput");
+
+        let originalImgData = null;
+        let currentFile = null;
+
+        /*
+         * Load image
+         */
+        imageInput.addEventListener("change", function (event) {
+
+            const file = event.target.files[0];
+
+            if (!file) {
+                return;
+            }
+
+            currentFile = file;
+
+            const img = new Image();
+
+            img.onload = function () {
+
+                canvas.width = img.width;
+                canvas.height = img.height;
+
+                ctx.drawImage(img, 0, 0);
+
+                originalImgData = ctx.getImageData(
+                    0,
+                    0,
+                    img.width,
+                    img.height
+                );
+
+                generateAuditLog(
+                    file,
+                    img.width,
+                    img.height,
+                    "Original"
+                );
+
+                URL.revokeObjectURL(img.src);
+            };
+
+            img.src = URL.createObjectURL(file);
+        });
+
+
+        /*
+         * Apply image processing filter
+         */
+        function applyFilter(filterType) {
+
+            if (!originalImgData || !currentFile) {
+                alert("Please upload an image first.");
+                return;
+            }
+
+            const imgData = new ImageData(
+                new Uint8ClampedArray(originalImgData.data),
+                originalImgData.width,
+                originalImgData.height
+            );
+
+            const data = imgData.data;
+
+
+            /*
+             * Reset image
+             */
+            if (filterType === "reset") {
+
+                ctx.putImageData(originalImgData, 0, 0);
+
+                generateAuditLog(
+                    currentFile,
+                    canvas.width,
+                    canvas.height,
+                    "Original"
+                );
+
+                return;
+            }
+
+
+            /*
+             * Process every pixel
+             *
+             * Each pixel contains:
+             *
+             * data[i]     = Red
+             * data[i + 1] = Green
+             * data[i + 2] = Blue
+             * data[i + 3] = Alpha
+             */
+            for (let i = 0; i < data.length; i += 4) {
+
+                let r = data[i];
+                let g = data[i + 1];
+                let b = data[i + 2];
+
+
+                /*
+                 * GRAYSCALE
+                 */
+                if (filterType === "grayscale") {
+
+                    const gray =
+                        0.299 * r +
+                        0.587 * g +
+                        0.114 * b;
+
+                    data[i] = gray;
+                    data[i + 1] = gray;
+                    data[i + 2] = gray;
+                }
+
+
+                /*
+                 * INVERT
+                 */
+                else if (filterType === "invert") {
+
+                    data[i] = 255 - r;
+                    data[i + 1] = 255 - g;
+                    data[i + 2] = 255 - b;
+                }
+
+
+                /*
+                 * BRIGHTNESS
+                 */
+                else if (filterType === "brighten") {
+
+                    data[i] = Math.min(255, r + 30);
+                    data[i + 1] = Math.min(255, g + 30);
+                    data[i + 2] = Math.min(255, b + 30);
+                }
+
+
+                /*
+                 * BINARY THRESHOLD
+                 */
+                else if (filterType === "threshold") {
+
+                    const gray =
+                        0.299 * r +
+                        0.587 * g +
+                        0.114 * b;
+
+                    const binary =
+                        gray >= 128 ? 255 : 0;
+
+                    data[i] = binary;
+                    data[i + 1] = binary;
+                    data[i + 2] = binary;
+                }
+
+            }
+
+
+            /*
+             * Display processed image
+             */
+            ctx.putImageData(imgData, 0, 0);
+
+
+            /*
+             * Generate audit log
+             */
+            generateAuditLog(
+                currentFile,
+                canvas.width,
+                canvas.height,
+                filterType
+            );
+        }
+
+
+        /*
+         * Generate media audit log
+         */
+        function generateAuditLog(
+            file,
+            width,
+            height,
+            activeFilter
+        ) {
+
+            const rawBytes = file.size;
+
+            /*
+             * RGBA uses 4 bytes per pixel.
+             */
+            const uncompressedBytes =
+                width * height * 4;
+
+
+            /*
+             * Calculate approximate storage saving.
+             */
+            const compressionRatio =
+                (
+                    100 -
+                    (rawBytes / uncompressedBytes * 100)
+                ).toFixed(2);
+
+
+            const timeStamp =
+                new Date()
+                    .toISOString()
+                    .replace("T", " ")
+                    .substring(0, 19);
+
+
+            const log = `
+====================================================
+        COMPUTER PULSE - IMAGE ASSET LOG
+====================================================
+
+Timestamp          : ${timeStamp}
+
+File Name          : ${file.name}
+
+MIME Type          : ${file.type}
+
+Dimensions         : ${width} x ${height} pixels
+
+Megapixels         : ${(width * height / 1000000).toFixed(2)} MP
+
+Disk File Size     : ${(rawBytes / 1024).toFixed(2)} KB
+
+Uncompressed RGBA  : ${(uncompressedBytes / 1024 / 1024).toFixed(2)} MB
+
+Disk Storage Saving: ${compressionRatio}%
+
+Active Processing  : ${activeFilter}
+
+====================================================
+`;
+
+
+            logOutput.value = log;
+        }
+
+    </script>
+
+</body>
+</html>
